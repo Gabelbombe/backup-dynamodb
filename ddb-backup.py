@@ -429,6 +429,7 @@ def do_restore(conn, sleep_interval, source_table, destination_table, write_capa
 # parse args
 parser = argparse.ArgumentParser(description="Simple DynamoDB backup/restore/empty.")
 parser.add_argument("-m", "--mode", help="'backup' or 'restore' or 'empty'")
+parser.add_argument("-v", "--verbose", help="Verbosity flag", action='count')  # will include -vvv for debug later
 parser.add_argument("-r", "--region",
                     help="AWS region to use, e.g. 'us-west-1'. Use '" + LOCAL_REGION + "' for local DynamoDB testing.")
 parser.add_argument("-s", "--srcTable",
@@ -457,8 +458,22 @@ args = parser.parse_args()
 # set log level
 log_level = LOG_LEVEL
 if args.log is not None:
-    log_level = args.log.upper()
-logging.basicConfig(level=getattr(logging, log_level))
+    numeric_level = getattr(logging, args.log.upper(), None)
+else:
+    numeric_level = getattr(logging, LOG_LEVEL, None)
+
+if not isinstance(numeric_level, int):
+    raise ValueError('Invalid log level: %s' % args.log.upper())
+else:
+    logging.basicConfig(level=numeric_level, filename='logs/ddb-backup.log', format='[%(levelname)s] %(message)s')
+
+    if args.verbose is not None:
+        console = logging.StreamHandler()
+        console.setLevel(numeric_level)
+
+        formatter = logging.Formatter('[%(levelname)s] %(message)s')
+        console.setFormatter(formatter)
+        logging.getLogger('').addHandler(console)
 
 # instantiate connection
 if args.region == LOCAL_REGION:
