@@ -8,7 +8,7 @@ SCHEMA_FILE = "schema.json"
 DATA_FILE = "0001.json"
 
 
-class TestDynamoDump(unittest.TestCase):
+class TestDdbDump(unittest.TestCase):
 
     def setUp(self):
         self.test_table_schema = json.load(open(TEST_DATA_PATH + "/" + SCHEMA_FILE))

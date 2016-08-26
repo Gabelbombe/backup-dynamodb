@@ -1,18 +1,18 @@
-dynamodump
+Backup Dynamo
 ==========
 
-[![Buildstatus](https://travis-ci.org/bchew/dynamodump.svg)](https://travis-ci.org/bchew/dynamodump)
+[![Buildstatus](https://travis-ci.org/ehime/backup-dynamodb.svg)](https://travis-ci.org/ehime/backup-dynamodb)
 
 Simple backup and restore script for Amazon DynamoDB using boto to work similarly to mysqldump.
 
 Suitable for DynamoDB usages of smaller data volume which do not warrant the usage of AWS Data Pipeline for backup/restores/empty.
 
-dynamodump supports local DynamoDB instances as well (tested with [dynalite](https://github.com/mhart/dynalite)).
+Backup Dynamo supports local DynamoDB instances as well (tested with [dynalite](https://github.com/mhart/dynalite)).
 
 Usage
 -----
 ```
-usage: dynamodump.py [-h] [-m MODE] [-r REGION] [-s SRCTABLE] [-d DESTTABLE]
+usage: ddb-backup.py [-h] [-m MODE] [-r REGION] [-s SRCTABLE] [-d DESTTABLE]
                      [--prefixSeparator PREFIXSEPARATOR] [--noSeparator]
                      [--readCapacity READCAPACITY]
                      [--writeCapacity WRITECAPACITY] [--host HOST]
@@ -70,36 +70,36 @@ The following examples assume your AWS access key and secret key is present in ~
 
 Single table backup/restore:
 ```
-python dynamodump.py -m backup -r us-west-1 -s testTable
+python ddb-backup.py -m backup -r us-west-1 -s testTable
 
-python dynamodump.py -m restore -r us-west-1 -s testTable
+python ddb-backup.py -m restore -r us-west-1 -s testTable
 ```
 Multiple table backup/restore (assumes prefix of 'production-' of table names, use --prefixSeparator to specify a
 different separator):
 ```
-python dynamodump.py -m backup -r us-west-1 -s production*
+python ddb-backup.py -m backup -r us-west-1 -s production*
 
-python dynamodump.py -m restore -r us-west-1 -s production*
+python ddb-backup.py -m restore -r us-west-1 -s production*
 ```
 The above, but between different environments (e.g. production-* tables to development-* tables):
 ```
-python dynamodump.py -m backup -r us-west-1 -s production*
+python ddb-backup.py -m backup -r us-west-1 -s production*
 
-python dynamodump.py -m restore -r us-west-1 -s production* -d development*
+python ddb-backup.py -m restore -r us-west-1 -s production* -d development*
 ```
 Backup all tables and restore only data (will not delete and recreate schema):
 ```
-python dynamodump.py -m backup -r us-west-1 -s "*"
+python ddb-backup.py -m backup -r us-west-1 -s "*"
 
-python dynamodump.py -m restore -r us-west-1 -s "*" --dataOnly
+python ddb-backup.py -m restore -r us-west-1 -s "*" --dataOnly
 ```
 
 Local example
 -------------
 The following assume your local DynamoDB is running on localhost:4567 and is accessible via 'a' as access/secret keys.
 ```
-python dynamodump.py -m backup -r local -s testTable --host localhost --port 4567 --accessKey a --secretKey a
+python ddb-backup.py -m backup -r local -s testTable --host localhost --port 4567 --accessKey a --secretKey a
 
-python dynamodump.py -m restore -r local -s testTable --host localhost --port 4567 --accessKey a --secretKey a
+python ddb-backup.py -m restore -r local -s testTable --host localhost --port 4567 --accessKey a --secretKey a
 ```
 Multiple table backup/restore as stated in the AWS examples are also available for local.
