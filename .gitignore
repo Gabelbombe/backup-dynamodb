@@ -37,3 +37,4 @@ nosetests.xml
 
 dump
 node_modules
+logs/*

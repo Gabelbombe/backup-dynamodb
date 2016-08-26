@@ -39,7 +39,7 @@ def get_table_name_matches(conn, table_name_wildcard, separator):
         try:
             last_evaluated_table_name = table_list["LastEvaluatedTableName"]
         except KeyError, e:
-            logging.info("Error: " % e)
+            logging.info("Error: " + e)
             break
 
     matching_tables = []
@@ -267,7 +267,7 @@ def do_backup(conn, table_name, read_capacity):
         try:
             last_evaluated_key = scanned_table["LastEvaluatedKey"]
         except KeyError, e:
-            logging.info("Error: " % e)
+            logging.info("Error: " + e)
             break
 
     # revert back to original table read capacity if specified
@@ -421,8 +421,20 @@ args = parser.parse_args()
 # set log level
 log_level = LOG_LEVEL
 if args.log is not None:
-    log_level = args.log.upper()
-logging.basicConfig(level=getattr(logging, log_level))
+    numeric_level = getattr(logging, args.log.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError('Invalid log level: %s' % args.log.upper())
+    else:
+        logging.basicConfig(level=numeric_level, filename='logs/ddb-backup.log', format='[%(levelname)s] %(message)s')
+        console = logging.StreamHandler()
+        console.setLevel(numeric_level)
+
+        formatter = logging.Formatter('[%(levelname)-0s] %(message)s')
+        console.setFormatter(formatter)
+        logging.getLogger('').addHandler(console)
+
+        # testing
+        logging.info('Jackdaws love my big sphinx of quartz.')
 
 # instantiate connection
 if args.region is LOCAL_REGION:
