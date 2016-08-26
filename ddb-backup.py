@@ -432,12 +432,9 @@ if args.log is not None:
             console = logging.StreamHandler()
             console.setLevel(numeric_level)
 
-            formatter = logging.Formatter('[%(levelname)-0s] %(message)s')
+            formatter = logging.Formatter('[%(levelname)s] %(message)s')
             console.setFormatter(formatter)
             logging.getLogger('').addHandler(console)
-
-            # testing
-            logging.info('Jackdaws love my big sphinx of quartz.')
 
 # instantiate connection
 if args.region is LOCAL_REGION:
