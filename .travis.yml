@@ -6,9 +6,9 @@ install:
   - pip install flake8
   - nvm install 4
   - nvm use 4
-  - npm install dynalite
+  - npm install -g dynalite
 script:
-  - flake8 --ignore=E501 --exclude=node_modules
+  - flake8 --ignore=E501,E111 --exclude=node_modules
   - dynalite --port 4567 &
   - mkdir dump && cp -a test/testTable dump
   - python ddb-backup.py -m restore -r local -s testTable -d testRestoredTable --host localhost --port 4567 --accessKey a --secretKey a
