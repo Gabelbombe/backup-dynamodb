@@ -38,6 +38,6 @@ nosetests.xml
 # Intellij
 .idea
 
-dump
+dumps
 node_modules
 logs/*
