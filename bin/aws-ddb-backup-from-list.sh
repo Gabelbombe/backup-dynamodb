@@ -8,7 +8,7 @@ TMIN=1
 LEN=$(($(echo $TMAX |wc -m)-1))
 
 for TBL in ${TBLS[@]} ; do
-  echo -e "($(printf "%0${LEN}d\n" $TMIN) / $TMAX) Attempting backup on: ${table} "
+  echo -e "($(printf "%0${LEN}d\n" $TMIN) / $TMAX) Backing up: ${TBL} "
 
   python ddb-backup.py -m backup -r us-east-1 -s ${TBL}
 
