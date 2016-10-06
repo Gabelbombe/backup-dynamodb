@@ -144,7 +144,7 @@ def mkdir_p(path):
             raise
 
 
-def batch_write(ddb_conn, sleep_interval, table_name, put_requests):
+def batch_write(ddb_conn, table_name, put_requests):
     request_items = {table_name: put_requests}
     i = 1
     while True:
