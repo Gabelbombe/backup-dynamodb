@@ -43,17 +43,17 @@ def get_table_name_matches(ddb_conn, table_name_wildcard, separator):
             break
 
     matching_tables = []
-    for table_name in all_tables:
+    for ddb_table_name in all_tables:
         if table_name_wildcard == "*":
-            matching_tables.append(table_name)
+            matching_tables.append(ddb_table_name)
         elif separator is None:
-            if table_name.startswith(table_name_wildcard.split("*", 1)[0]):
-                matching_tables.append(table_name)
+            if ddb_table_name.startswith(table_name_wildcard.split("*", 1)[0]):
+                matching_tables.append(ddb_table_name)
         elif separator == '':
-            if table_name.startswith(re.sub(r"([A-Z])", r" \1", table_name_wildcard.split("*", 1)[0]).split()[0]):
-                matching_tables.append(table_name)
-        elif table_name.split(separator, 1)[0] == table_name_wildcard.split("*", 1)[0]:
-            matching_tables.append(table_name)
+            if ddb_table_name.startswith(re.sub(r"([A-Z])", r" \1", table_name_wildcard.split("*", 1)[0]).split()[0]):
+                matching_tables.append(ddb_table_name)
+        elif ddb_table_name.split(separator, 1)[0] == table_name_wildcard.split("*", 1)[0]:
+            matching_tables.append(ddb_table_name)
 
     return matching_tables
 
@@ -96,6 +96,7 @@ def change_prefix(source_table_name, source_wildcard, destination_wildcard, sepa
 def delete_table(ddb_conn, sleep_interval, table_name):
     if not args.dataOnly:
         while True:
+
             # delete table if exists
             table_exist = True
             try:
