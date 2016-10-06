@@ -178,7 +178,9 @@ def update_provisioned_throughput(ddb_conn, table_name, read_capacity, write_cap
     logging.info("Updating " + table_name + " table read capacity to: " + str(read_capacity) + ", write capacity to: " + str(write_capacity))
     while True:
         try:
-            ddb_conn.update_table(table_name, {"ReadCapacityUnits": int(read_capacity), "WriteCapacityUnits": int(write_capacity)})
+            ddb_conn.update_table(table_name, {
+                "ReadCapacityUnits": int(read_capacity), "WriteCapacityUnits": int(write_capacity)
+            })
             break
         except boto.exception.JSONResponseError as e:
             if e.body["__type"] == "com.amazonaws.dynamodb.v20120810#LimitExceededException":
@@ -219,8 +221,14 @@ def do_empty(ddb_conn, table_name):
 
     while True:
         try:
-            ddb_conn.create_table(table_attribute_definitions, table_name, table_key_schema, table_provisioned_throughput,
-                              table_local_secondary_indexes, table_global_secondary_indexes)
+            ddb_conn.create_table(
+                table_attribute_definitions,
+                table_name,
+                table_key_schema,
+                table_provisioned_throughput,
+                table_local_secondary_indexes,
+                table_global_secondary_indexes
+            )
             break
         except boto.exception.JSONResponseError as e:
             if e.body["__type"] == "com.amazonaws.dynamodb.v20120810#LimitExceededException":
@@ -340,9 +348,14 @@ def do_restore(ddb_conn, sleep_interval, source_table, destination_table, write_
 
         while True:
             try:
-                ddb_conn.create_table(table_attribute_definitions, table_table_name, table_key_schema,
-                                  table_provisioned_throughput, table_local_secondary_indexes,
-                                  table_global_secondary_indexes)
+                ddb_conn.create_table(
+                    table_attribute_definitions,
+                    table_table_name,
+                    table_key_schema,
+                    table_provisioned_throughput,
+                    table_local_secondary_indexes,
+                    table_global_secondary_indexes
+                )
                 break
             except boto.exception.JSONResponseError as e:
                 if e.body["__type"] == "com.amazonaws.dynamodb.v20120810#LimitExceededException":
