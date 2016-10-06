@@ -35,6 +35,10 @@ nosetests.xml
 .project
 .pydevproject
 
+# Intellij
+.idea
+.idea/inspectionProfiles/
+
 dump
 node_modules
 logs/*

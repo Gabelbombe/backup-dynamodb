@@ -29,12 +29,12 @@ CURRENT_WORKING_DIR = os.getcwd()
 DEFAULT_PREFIX_SEPARATOR = "-"
 
 
-def get_table_name_matches(conn, table_name_wildcard, separator):
+def get_table_name_matches(ddb_conn, table_name_wildcard, separator):
     all_tables = []
     last_evaluated_table_name = None
 
     while True:
-        table_list = conn.list_tables(exclusive_start_table_name=last_evaluated_table_name)
+        table_list = ddb_conn.list_tables(exclusive_start_table_name=last_evaluated_table_name)
         all_tables.extend(table_list["TableNames"])
 
         try:
@@ -93,13 +93,13 @@ def change_prefix(source_table_name, source_wildcard, destination_wildcard, sepa
         return destination_prefix + separator + source_table_name.split(separator, 1)[1]
 
 
-def delete_table(conn, sleep_interval, table_name):
+def delete_table(ddb_conn, sleep_interval, table_name):
     if not args.dataOnly:
         while True:
             # delete table if exists
             table_exist = True
             try:
-                conn.delete_table(table_name)
+                ddb_conn.delete_table(table_name)
             except boto.exception.JSONResponseError as e:
                 if e.body["__type"] == "com.amazonaws.dynamodb.v20120810#ResourceNotFoundException":
                     table_exist = False
@@ -144,11 +144,11 @@ def mkdir_p(path):
             raise
 
 
-def batch_write(conn, sleep_interval, table_name, put_requests):
+def batch_write(ddb_conn, sleep_interval, table_name, put_requests):
     request_items = {table_name: put_requests}
     i = 1
     while True:
-        response = conn.batch_write_item(request_items)
+        response = ddb_conn.batch_write_item(request_items)
         unprocessed_items = response["UnprocessedItems"]
 
         if len(unprocessed_items) == 0:
@@ -159,17 +159,15 @@ def batch_write(conn, sleep_interval, table_name, put_requests):
             request_items = unprocessed_items
             i += 1
         else:
-            logging.info("Max retries reached, failed to processed batch write: " + json.dumps(unprocessed_items,
-                                                                                               indent=JSON_INDENT))
+            logging.info("Max retries reached, failed to processed batch write: " + json.dumps(unprocessed_items, indent=JSON_INDENT))
             logging.info("Ignoring and continuing..")
             break
 
 
-def wait_for_active_table(conn, table_name, verb):
+def wait_for_active_table(ddb_conn, table_name, verb):
     while True:
-        if conn.describe_table(table_name)["Table"]["TableStatus"] != "ACTIVE":
-            logging.info("Waiting for " + table_name + " table to be " + verb + ".. [" +
-                         conn.describe_table(table_name)["Table"]["TableStatus"] + "]")
+        if ddb_conn.describe_table(table_name)["Table"]["TableStatus"] != "ACTIVE":
+            logging.info("Waiting for " + table_name + " table to be " + verb + ".. [" + ddb_conn.describe_table(table_name)["Table"]["TableStatus"] + "]")
             time.sleep(sleep_interval)
         else:
             logging.info(table_name + " " + verb + ".")
@@ -177,13 +175,10 @@ def wait_for_active_table(conn, table_name, verb):
 
 
 def update_provisioned_throughput(conn, table_name, read_capacity, write_capacity, wait=True):
-    logging.info(
-        "Updating " + table_name + " table read capacity to: " + str(read_capacity) + ", write capacity to: " + str(
-            write_capacity))
+    logging.info("Updating " + table_name + " table read capacity to: " + str(read_capacity) + ", write capacity to: " + str(write_capacity))
     while True:
         try:
-            conn.update_table(table_name,
-                              {"ReadCapacityUnits": int(read_capacity), "WriteCapacityUnits": int(write_capacity)})
+            conn.update_table(table_name, {"ReadCapacityUnits": int(read_capacity), "WriteCapacityUnits": int(write_capacity)})
             break
         except boto.exception.JSONResponseError as e:
             if e.body["__type"] == "com.amazonaws.dynamodb.v20120810#LimitExceededException":
@@ -428,31 +423,54 @@ def do_restore(conn, sleep_interval, source_table, destination_table, write_capa
 
 # parse args
 parser = argparse.ArgumentParser(description="Simple DynamoDB backup/restore/empty.")
-parser.add_argument("-m", "--mode", help="'backup' or 'restore' or 'empty'")
-parser.add_argument("-v", "--verbose", help="Verbosity flag", action='count')  # will include -vvv for debug later
+
+parser.add_argument("-m", "--mode",
+                    help="'backup' or 'restore' or 'empty'")
+parser.add_argument("-v", "--verbose",
+                    help="Verbosity flag",
+                    action='count')  # will include -vvv for debug later
 parser.add_argument("-r", "--region",
                     help="AWS region to use, e.g. 'us-west-1'. Use '" + LOCAL_REGION + "' for local DynamoDB testing.")
 parser.add_argument("-s", "--srcTable",
                     help="Source DynamoDB table name to backup or restore from, use 'tablename*' for wildcard prefix selection or '*' for all tables.")
 parser.add_argument("-d", "--destTable",
                     help="Destination DynamoDB table name to backup or restore to, use 'tablename*' for wildcard prefix selection (defaults to use '-' separator) [optional, defaults to source]")
-parser.add_argument("--prefixSeparator", help="Specify a different prefix separator, e.g. '.' [optional]")
-parser.add_argument("--noSeparator", action='store_true',
-                    help="Overrides the use of a prefix separator for backup wildcard searches, [optional]")
+parser.add_argument("--prefixSeparator",
+                    help="Specify a different prefix separator, e.g. '.' [optional]")
+parser.add_argument("--noSeparator",
+                    help="Overrides the use of a prefix separator for backup wildcard searches, [optional]",
+                    action = 'store_true')
 parser.add_argument("--readCapacity",
                     help="Change the temp read capacity of the DynamoDB table to backup from [optional]")
+
 parser.add_argument("--writeCapacity",
-                    help="Change the temp write capacity of the DynamoDB table to restore to [defaults to " + str(
-                        RESTORE_WRITE_CAPACITY) + ", optional]")
-parser.add_argument("--host", help="Host of local DynamoDB [required only for local]")
-parser.add_argument("--port", help="Port of local DynamoDB [required only for local]")
-parser.add_argument("--accessKey", help="Access key of local DynamoDB [required only for local]")
-parser.add_argument("--secretKey", help="Secret key of local DynamoDB [required only for local]")
-parser.add_argument("--log", help="Logging level - DEBUG|INFO|WARNING|ERROR|CRITICAL [optional]")
-parser.add_argument("--dataOnly", action="store_true", default=False,
+                    help="Change the temp write capacity of the DynamoDB table to restore to [defaults to " + str(RESTORE_WRITE_CAPACITY) + ", optional]")
+
+parser.add_argument("--host",
+                    help="Host of local DynamoDB [required only for local]")
+
+parser.add_argument("--port",
+                    help="Port of local DynamoDB [required only for local]")
+
+parser.add_argument("--accessKey",
+                    help="Access key of local DynamoDB [required only for local]")
+
+parser.add_argument("--secretKey",
+                    help="Secret key of local DynamoDB [required only for local]")
+
+parser.add_argument("--log",
+                    help="Logging level - DEBUG|INFO|WARNING|ERROR|CRITICAL [optional]")
+
+parser.add_argument("--dataOnly",
+                    action="store_true",
+                    default=False,
                     help="Restore data only. Do not delete/recreate schema [optional for restore]")
-parser.add_argument("--skipThroughputUpdate", action="store_true", default=False,
+
+parser.add_argument("--skipThroughputUpdate",
+                    action="store_true",
+                    default=False,
                     help="Skip updating throughput values across tables [optional]")
+
 args = parser.parse_args()
 
 # set log level
