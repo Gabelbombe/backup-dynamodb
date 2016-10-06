@@ -144,8 +144,9 @@ def mkdir_p(path):
         else:
             raise
 
+
+# TODO: sleep_interval is not implemented but should be...
 def batch_write(ddb_conn, sleep_interval, table_name, put_requests):
-    # TODO: sleep_interval is not implemented but should be...
     request_items = {table_name: put_requests}
     i = 1
     while True:
