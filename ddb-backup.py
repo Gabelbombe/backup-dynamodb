@@ -426,20 +426,27 @@ parser = argparse.ArgumentParser(description="Simple DynamoDB backup/restore/emp
 
 parser.add_argument("-m", "--mode",
                     help="'backup' or 'restore' or 'empty'")
+
 parser.add_argument("-v", "--verbose",
                     help="Verbosity flag",
                     action='count')  # will include -vvv for debug later
+
 parser.add_argument("-r", "--region",
                     help="AWS region to use, e.g. 'us-west-1'. Use '" + LOCAL_REGION + "' for local DynamoDB testing.")
+
 parser.add_argument("-s", "--srcTable",
                     help="Source DynamoDB table name to backup or restore from, use 'tablename*' for wildcard prefix selection or '*' for all tables.")
+
 parser.add_argument("-d", "--destTable",
                     help="Destination DynamoDB table name to backup or restore to, use 'tablename*' for wildcard prefix selection (defaults to use '-' separator) [optional, defaults to source]")
+
 parser.add_argument("--prefixSeparator",
                     help="Specify a different prefix separator, e.g. '.' [optional]")
+
 parser.add_argument("--noSeparator",
                     help="Overrides the use of a prefix separator for backup wildcard searches, [optional]",
-                    action = 'store_true')
+                    action='store_true')
+
 parser.add_argument("--readCapacity",
                     help="Change the temp read capacity of the DynamoDB table to backup from [optional]")
 
