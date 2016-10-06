@@ -37,7 +37,6 @@ nosetests.xml
 
 # Intellij
 .idea
-.idea/inspectionProfiles/
 
 dump
 node_modules
