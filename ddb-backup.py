@@ -174,11 +174,11 @@ def wait_for_active_table(ddb_conn, table_name, verb):
             break
 
 
-def update_provisioned_throughput(conn, table_name, read_capacity, write_capacity, wait=True):
+def update_provisioned_throughput(ddb_conn, table_name, read_capacity, write_capacity, wait=True):
     logging.info("Updating " + table_name + " table read capacity to: " + str(read_capacity) + ", write capacity to: " + str(write_capacity))
     while True:
         try:
-            conn.update_table(table_name, {"ReadCapacityUnits": int(read_capacity), "WriteCapacityUnits": int(write_capacity)})
+            ddb_conn.update_table(table_name, {"ReadCapacityUnits": int(read_capacity), "WriteCapacityUnits": int(write_capacity)})
             break
         except boto.exception.JSONResponseError as e:
             if e.body["__type"] == "com.amazonaws.dynamodb.v20120810#LimitExceededException":
@@ -190,15 +190,15 @@ def update_provisioned_throughput(conn, table_name, read_capacity, write_capacit
 
     # wait for provisioned throughput update completion
     if wait:
-        wait_for_active_table(conn, table_name, "updated")
+        wait_for_active_table(ddb_conn, table_name, "updated")
 
 
-def do_empty(conn, table_name):
+def do_empty(ddb_conn, table_name):
     logging.info("Starting Empty for " + table_name + "..")
 
     # get table schema
     logging.info("Fetching table schema for " + table_name)
-    table_data = conn.describe_table(table_name)
+    table_data = ddb_conn.describe_table(table_name)
 
     table_desc = table_data["Table"]
     table_attribute_definitions = table_desc["AttributeDefinitions"]
@@ -213,13 +213,13 @@ def do_empty(conn, table_name):
 
     logging.info("Deleting Table " + table_name)
 
-    delete_table(conn, sleep_interval, table_name)
+    delete_table(ddb_conn, sleep_interval, table_name)
 
     logging.info("Creating Table " + table_name)
 
     while True:
         try:
-            conn.create_table(table_attribute_definitions, table_name, table_key_schema, table_provisioned_throughput,
+            ddb_conn.create_table(table_attribute_definitions, table_name, table_key_schema, table_provisioned_throughput,
                               table_local_secondary_indexes, table_global_secondary_indexes)
             break
         except boto.exception.JSONResponseError as e:
@@ -234,13 +234,13 @@ def do_empty(conn, table_name):
                 sys.exit(1)
 
     # wait for table creation completion
-    wait_for_active_table(conn, table_name, "created")
+    wait_for_active_table(ddb_conn, table_name, "created")
 
     logging.info("Recreation of " + table_name + " completed. Time taken: " + str(
         datetime.datetime.now().replace(microsecond=0) - start_time))
 
 
-def do_backup(conn, table_name, read_capacity):
+def do_backup(ddb_conn, table_name, read_capacity):
     logging.info("Starting backup for " + table_name + "..")
 
     # trash data, re-create subdir
@@ -251,7 +251,7 @@ def do_backup(conn, table_name, read_capacity):
     # get table schema
     logging.info("Dumping table schema for " + table_name)
     f = open(DUMP_PATH + "/" + table_name + "/" + SCHEMA_FILE, "w+")
-    table_desc = conn.describe_table(table_name)
+    table_desc = ddb_conn.describe_table(table_name)
     f.write(json.dumps(table_desc, indent=JSON_INDENT))
     f.close()
 
@@ -260,7 +260,7 @@ def do_backup(conn, table_name, read_capacity):
 
     # override table read capacity if specified
     if read_capacity is not None and read_capacity != original_read_capacity:
-        update_provisioned_throughput(conn, table_name, read_capacity, original_write_capacity)
+        update_provisioned_throughput(ddb_conn, table_name, read_capacity, original_write_capacity)
 
     # get table data
     logging.info("Dumping table items for " + table_name)
@@ -270,7 +270,7 @@ def do_backup(conn, table_name, read_capacity):
     last_evaluated_key = None
 
     while True:
-        scanned_table = conn.scan(table_name, exclusive_start_key=last_evaluated_key)
+        scanned_table = ddb_conn.scan(table_name, exclusive_start_key=last_evaluated_key)
 
         f = open(DUMP_PATH + "/" + table_name + "/" + DATA_DIR + "/" + str(i).zfill(4) + ".json", "w+")
         f.write(json.dumps(scanned_table, indent=JSON_INDENT))
@@ -285,13 +285,13 @@ def do_backup(conn, table_name, read_capacity):
 
     # revert back to original table read capacity if specified
     if read_capacity is not None and read_capacity != original_read_capacity:
-        update_provisioned_throughput(conn, table_name, original_read_capacity, original_write_capacity, False)
+        update_provisioned_throughput(ddb_conn, table_name, original_read_capacity, original_write_capacity, False)
 
     logging.info("Backup for " + table_name + " table completed. Time taken: " + str(
         datetime.datetime.now().replace(microsecond=0) - start_time))
 
 
-def do_restore(conn, sleep_interval, source_table, destination_table, write_capacity):
+def do_restore(ddb_conn, sleep_interval, source_table, destination_table, write_capacity):
     logging.info("Starting restore for " + source_table + " to " + destination_table + "..")
 
     # create table using schema
@@ -340,7 +340,7 @@ def do_restore(conn, sleep_interval, source_table, destination_table, write_capa
 
         while True:
             try:
-                conn.create_table(table_attribute_definitions, table_table_name, table_key_schema,
+                ddb_conn.create_table(table_attribute_definitions, table_table_name, table_key_schema,
                                   table_provisioned_throughput, table_local_secondary_indexes,
                                   table_global_secondary_indexes)
                 break
@@ -356,7 +356,7 @@ def do_restore(conn, sleep_interval, source_table, destination_table, write_capa
                     sys.exit(1)
 
         # wait for table creation completion
-        wait_for_active_table(conn, destination_table, "created")
+        wait_for_active_table(ddb_conn, destination_table, "created")
 
     # read data files
     logging.info("Restoring data for " + destination_table + " table..")
@@ -377,17 +377,17 @@ def do_restore(conn, sleep_interval, source_table, destination_table, write_capa
             # flush every MAX_BATCH_WRITE
             if len(put_requests) == MAX_BATCH_WRITE:
                 logging.debug("Writing next " + str(MAX_BATCH_WRITE) + " items to " + destination_table + "..")
-                batch_write(conn, sleep_interval, destination_table, put_requests)
+                batch_write(ddb_conn, sleep_interval, destination_table, put_requests)
                 del put_requests[:]
 
         # flush remainder
         if len(put_requests) > 0:
-            batch_write(conn, sleep_interval, destination_table, put_requests)
+            batch_write(ddb_conn, sleep_interval, destination_table, put_requests)
 
     if not args.dataOnly and not args.skipThroughputUpdate:
         # revert to original table write capacity if it has been modified
         if write_capacity != original_write_capacity:
-            update_provisioned_throughput(conn, destination_table, original_read_capacity, original_write_capacity,
+            update_provisioned_throughput(ddb_conn, destination_table, original_read_capacity, original_write_capacity,
                                           False)
 
         # loop through each GSI to check if it has changed and update if necessary
@@ -405,7 +405,7 @@ def do_restore(conn, sleep_interval, source_table, destination_table, write_capa
             logging.info("Updating " + destination_table + " global secondary indexes write capacities as necessary..")
             while True:
                 try:
-                    conn.update_table(destination_table, global_secondary_index_updates=gsi_data)
+                    ddb_conn.update_table(destination_table, global_secondary_index_updates=gsi_data)
                     break
                 except boto.exception.JSONResponseError as e:
                     if e.body["__type"] == "com.amazonaws.dynamodb.v20120810#LimitExceededException":
