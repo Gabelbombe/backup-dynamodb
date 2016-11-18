@@ -93,28 +93,28 @@ def change_prefix(source_table_name, source_wildcard, destination_wildcard, sepa
         return destination_prefix + separator + source_table_name.split(separator, 1)[1]
 
 
-def delete_table(ddb_conn, sleep_interval, table_name):
+def delete_table(ddb_conn, ddb_sleep_interval, ddb_table_name):
     if not args.dataOnly:
         while True:
 
             # delete table if exists
             table_exist = True
             try:
-                ddb_conn.delete_table(table_name)
+                ddb_conn.delete_table(ddb_table_name)
             except boto.exception.JSONResponseError as e:
                 if e.body["__type"] == "com.amazonaws.dynamodb.v20120810#ResourceNotFoundException":
                     table_exist = False
-                    logging.info(table_name + " table deleted!")
+                    logging.info(ddb_table_name + " table deleted!")
                     break
                 elif e.body["__type"] == "com.amazonaws.dynamodb.v20120810#LimitExceededException":
-                    logging.info("Limit exceeded, retrying deletion of " + table_name + "..")
-                    time.sleep(sleep_interval)
+                    logging.info("Limit exceeded, retrying deletion of " + ddb_table_name + "..")
+                    time.sleep(ddb_sleep_interval)
                 elif e.body["__type"] == "com.amazon.coral.availability#ThrottlingException":
-                    logging.info("Control plane limit exceeded, retrying deletion of " + table_name + "..")
-                    time.sleep(sleep_interval)
+                    logging.info("Control plane limit exceeded, retrying deletion of " + ddb_table_name + "..")
+                    time.sleep(ddb_sleep_interval)
                 elif e.body["__type"] == "com.amazonaws.dynamodb.v20120810#ResourceInUseException":
-                    logging.info(table_name + " table is being deleted..")
-                    time.sleep(sleep_interval)
+                    logging.info(ddb_table_name + " table is being deleted..")
+                    time.sleep(ddb_sleep_interval)
                 else:
                     logging.exception(e)
                     sys.exit(1)
@@ -123,12 +123,12 @@ def delete_table(ddb_conn, sleep_interval, table_name):
         if table_exist:
             try:
                 while True:
-                    logging.info("Waiting for " + table_name + " table to be deleted.. [" +
-                                 ddb_conn.describe_table(table_name)["Table"]["TableStatus"] + "]")
-                    time.sleep(sleep_interval)
+                    logging.info("Waiting for " + ddb_table_name + " table to be deleted.. [" +
+                                 ddb_conn.describe_table(ddb_table_name)["Table"]["TableStatus"] + "]")
+                    time.sleep(ddb_sleep_interval)
             except boto.exception.JSONResponseError as e:
                 if e.body["__type"] == "com.amazonaws.dynamodb.v20120810#ResourceNotFoundException":
-                    logging.info(table_name + " table deleted.")
+                    logging.info(ddb_table_name + " table deleted.")
                     pass
                 else:
                     logging.exception(e)
@@ -167,13 +167,13 @@ def batch_write(ddb_conn, sleep_interval, table_name, put_requests):
             break
 
 
-def wait_for_active_table(ddb_conn, table_name, verb):
+def wait_for_active_table(ddb_conn, ddb_table_name, verb):
     while True:
-        if ddb_conn.describe_table(table_name)["Table"]["TableStatus"] != "ACTIVE":
-            logging.info("Waiting for " + table_name + " table to be " + verb + ".. [" + ddb_conn.describe_table(table_name)["Table"]["TableStatus"] + "]")
+        if ddb_conn.describe_table(ddb_table_name)["Table"]["TableStatus"] != "ACTIVE":
+            logging.info("Waiting for " + ddb_table_name + " table to be " + verb + ".. [" + ddb_conn.describe_table(ddb_table_name)["Table"]["TableStatus"] + "]")
             time.sleep(sleep_interval)
         else:
-            logging.info(table_name + " " + verb + ".")
+            logging.info(ddb_table_name + " " + verb + ".")
             break
 
 
@@ -198,12 +198,12 @@ def update_provisioned_throughput(ddb_conn, table_name, read_capacity, write_cap
         wait_for_active_table(ddb_conn, table_name, "updated")
 
 
-def do_empty(ddb_conn, table_name):
-    logging.info("Starting Empty for " + table_name + "..")
+def do_empty(ddb_conn, ddb_table_name):
+    logging.info("Starting Empty for " + ddb_table_name + "..")
 
     # get table schema
-    logging.info("Fetching table schema for " + table_name)
-    table_data = ddb_conn.describe_table(table_name)
+    logging.info("Fetching table schema for " + ddb_table_name)
+    table_data = ddb_conn.describe_table(ddb_table_name)
 
     table_desc = table_data["Table"]
     table_attribute_definitions = table_desc["AttributeDefinitions"]
@@ -216,17 +216,17 @@ def do_empty(ddb_conn, table_name):
     table_provisioned_throughput = {"ReadCapacityUnits": int(original_read_capacity),
                                     "WriteCapacityUnits": int(original_write_capacity)}
 
-    logging.info("Deleting Table " + table_name)
+    logging.info("Deleting Table " + ddb_table_name)
 
-    delete_table(ddb_conn, sleep_interval, table_name)
+    delete_table(ddb_conn, sleep_interval, ddb_table_name)
 
-    logging.info("Creating Table " + table_name)
+    logging.info("Creating Table " + ddb_table_name)
 
     while True:
         try:
             ddb_conn.create_table(
                 table_attribute_definitions,
-                table_name,
+                ddb_table_name,
                 table_key_schema,
                 table_provisioned_throughput,
                 table_local_secondary_indexes,
@@ -235,19 +235,19 @@ def do_empty(ddb_conn, table_name):
             break
         except boto.exception.JSONResponseError as e:
             if e.body["__type"] == "com.amazonaws.dynamodb.v20120810#LimitExceededException":
-                logging.info("Limit exceeded, retrying creation of " + table_name + "..")
+                logging.info("Limit exceeded, retrying creation of " + ddb_table_name + "..")
                 time.sleep(sleep_interval)
             elif e.body["__type"] == "com.amazon.coral.availability#ThrottlingException":
-                logging.info("Control plane limit exceeded, retrying creation of " + table_name + "..")
+                logging.info("Control plane limit exceeded, retrying creation of " + ddb_table_name + "..")
                 time.sleep(sleep_interval)
             else:
                 logging.exception(e)
                 sys.exit(1)
 
     # wait for table creation completion
-    wait_for_active_table(ddb_conn, table_name, "created")
+    wait_for_active_table(ddb_conn, ddb_table_name, "created")
 
-    logging.info("Recreation of " + table_name + " completed. Time taken: " + str(
+    logging.info("Recreation of " + ddb_table_name + " completed. Time taken: " + str(
         datetime.datetime.now().replace(microsecond=0) - start_time))
 
 
