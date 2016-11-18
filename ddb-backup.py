@@ -305,21 +305,21 @@ def do_backup(ddb_conn, ddb_table_name, read_capacity):
         datetime.datetime.now().replace(microsecond=0) - start_time))
 
 
-def do_restore(ddb_conn, ddb_sleep_interval, source_table, destination_table, write_capacity):
-    logging.info("Starting restore for " + source_table + " to " + destination_table + "..")
+def do_restore(ddb_conn, ddb_sleep_interval, ddb_source_table, destination_table, write_capacity):
+    logging.info("Starting restore for " + ddb_source_table + " to " + destination_table + "..")
 
     # create table using schema
-    # restore source_table from dump directory if it exists else try current working directory
-    if os.path.exists("%s/%s" % (DUMP_PATH, source_table)):
+    # restore ddb_source_table from dump directory if it exists else try current working directory
+    if os.path.exists("%s/%s" % (DUMP_PATH, ddb_source_table)):
         dump_data_path = DUMP_PATH
     else:
-        logging.info("Cannot find \"./%s/%s\", Now trying current working directory.." % (DUMP_PATH, source_table))
-        if os.path.exists("%s/%s" % (CURRENT_WORKING_DIR, source_table)):
+        logging.info("Cannot find \"./%s/%s\", Now trying current working directory.." % (DUMP_PATH, ddb_source_table))
+        if os.path.exists("%s/%s" % (CURRENT_WORKING_DIR, ddb_source_table)):
             dump_data_path = CURRENT_WORKING_DIR
         else:
-            logging.info("Cannot find \"%s/%s\" directory containing dump files!" % (CURRENT_WORKING_DIR, source_table))
+            logging.info("Cannot find \"%s/%s\" directory containing dump files!" % (CURRENT_WORKING_DIR, ddb_source_table))
             sys.exit(1)
-    table_data = json.load(open(dump_data_path + "/" + source_table + "/" + SCHEMA_FILE))
+    table_data = json.load(open(dump_data_path + "/" + ddb_source_table + "/" + SCHEMA_FILE))
     table = table_data["Table"]
     table_attribute_definitions = table["AttributeDefinitions"]
     table_table_name = destination_table
@@ -379,13 +379,13 @@ def do_restore(ddb_conn, ddb_sleep_interval, source_table, destination_table, wr
 
     # read data files
     logging.info("Restoring data for " + destination_table + " table..")
-    data_file_list = os.listdir(dump_data_path + "/" + source_table + "/" + DATA_DIR + "/")
+    data_file_list = os.listdir(dump_data_path + "/" + ddb_source_table + "/" + DATA_DIR + "/")
     data_file_list.sort()
 
     for data_file in data_file_list:
         logging.info("Processing " + data_file + " of " + destination_table)
         items = []
-        item_data = json.load(open(dump_data_path + "/" + source_table + "/" + DATA_DIR + "/" + data_file))
+        item_data = json.load(open(dump_data_path + "/" + ddb_source_table + "/" + DATA_DIR + "/" + data_file))
         items.extend(item_data["Items"])
 
         # batch write data
@@ -438,7 +438,7 @@ def do_restore(ddb_conn, ddb_sleep_interval, source_table, destination_table, wr
                             destination_table + "..")
                         time.sleep(ddb_sleep_interval)
 
-    logging.info("Restore for " + source_table + " to " + destination_table + " table completed. Time taken: " + str(
+    logging.info("Restore for " + ddb_source_table + " to " + destination_table + " table completed. Time taken: " + str(
         datetime.datetime.now().replace(microsecond=0) - start_time))
 
 
