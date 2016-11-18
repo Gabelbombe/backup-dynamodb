@@ -136,6 +136,7 @@ def delete_table(ddb_conn, sleep_interval, table_name):
 
 
 def mkdir_p(path):
+    print("Making dir: " + path)
     try:
         os.makedirs(path)
     except OSError as exc:
