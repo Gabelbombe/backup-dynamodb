@@ -3,7 +3,7 @@ import json
 import unittest
 
 TEST_DATA_PATH = "test/testTable"
-DUMP_DATA_PATH = "dump/testRestoredTable"
+DUMP_DATA_PATH = "dumps/testRestoredTable"
 SCHEMA_FILE = "schema.json"
 DATA_FILE = "0001.json"
 
@@ -36,6 +36,7 @@ class TestDdbDump(unittest.TestCase):
 
     def test_data(self):
         self.assertEqual(self.test_table_data, self.restored_test_table_data)
+
 
 if __name__ == '__main__':
     unittest.main()
