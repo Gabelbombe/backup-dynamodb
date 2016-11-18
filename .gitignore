@@ -39,7 +39,6 @@ nosetests.xml
 .idea
 
 # Folders
-dumps
 node_modules
 logs/*
 future/*
