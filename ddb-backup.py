@@ -162,7 +162,8 @@ def batch_write(ddb_conn, sleep_interval, table_name, put_requests):
             request_items = unprocessed_items
             i += 1
         else:
-            logging.info("Max retries reached, failed to processed batch write: " + json.dumps(unprocessed_items, indent=JSON_INDENT))
+            logging.info("Max retries reached, failed to processed batch write: " + json.dumps(unprocessed_items,
+                                                                                               indent=JSON_INDENT))
             logging.info("Ignoring and continuing..")
             break
 
@@ -170,7 +171,8 @@ def batch_write(ddb_conn, sleep_interval, table_name, put_requests):
 def wait_for_active_table(ddb_conn, ddb_table_name, verb):
     while True:
         if ddb_conn.describe_table(ddb_table_name)["Table"]["TableStatus"] != "ACTIVE":
-            logging.info("Waiting for " + ddb_table_name + " table to be " + verb + ".. [" + ddb_conn.describe_table(ddb_table_name)["Table"]["TableStatus"] + "]")
+            logging.info("Waiting for " + ddb_table_name + " table to be " + verb + ".. [" +
+                         ddb_conn.describe_table(ddb_table_name)["Table"]["TableStatus"] + "]")
             time.sleep(sleep_interval)
         else:
             logging.info(ddb_table_name + " " + verb + ".")
@@ -178,7 +180,8 @@ def wait_for_active_table(ddb_conn, ddb_table_name, verb):
 
 
 def update_provisioned_throughput(ddb_conn, table_name, read_capacity, write_capacity, wait=True):
-    logging.info("Updating " + table_name + " table read capacity to: " + str(read_capacity) + ", write capacity to: " + str(write_capacity))
+    logging.info("Updating " + table_name + " table read capacity to: " + str(read_capacity) + ", write capacity to: " +
+                 str(write_capacity))
     while True:
         try:
             ddb_conn.update_table(table_name, {
