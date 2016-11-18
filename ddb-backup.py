@@ -124,7 +124,7 @@ def delete_table(ddb_conn, sleep_interval, table_name):
             try:
                 while True:
                     logging.info("Waiting for " + table_name + " table to be deleted.. [" +
-                                 conn.describe_table(table_name)["Table"]["TableStatus"] + "]")
+                                 ddb_conn.describe_table(table_name)["Table"]["TableStatus"] + "]")
                     time.sleep(sleep_interval)
             except boto.exception.JSONResponseError as e:
                 if e.body["__type"] == "com.amazonaws.dynamodb.v20120810#ResourceNotFoundException":
