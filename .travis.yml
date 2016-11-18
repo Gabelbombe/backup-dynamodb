@@ -10,9 +10,9 @@ install:
 script:
   - flake8 --ignore=E501 --exclude=node_modules
   - dynalite --port 4567 &
-  - mkdir dump && cp -a test/testTable dump
+  - mkdir -p dumps && cp -a test/testTable dumps
   - python ddb-backup.py -v --log info -m restore -r local -s testTable -d testRestoredTable --host localhost --port 4567 --accessKey a --secretKey a
   - python ddb-backup.py -v --log info -m backup -r local -s testRestoredTable --host localhost --port 4567 --accessKey a --secretKey a
   - python test/test.py
 matrix:
-    fast_finish: true
+  fast_finish: true
