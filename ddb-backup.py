@@ -254,18 +254,18 @@ def do_empty(ddb_conn, ddb_table_name):
         datetime.datetime.now().replace(microsecond=0) - start_time))
 
 
-def do_backup(ddb_conn, table_name, read_capacity):
-    logging.info("Starting backup for " + table_name + "..")
+def do_backup(ddb_conn, ddb_table_name, read_capacity):
+    logging.info("Starting backup for " + ddb_table_name + "..")
 
     # trash data, re-create subdir
-    if os.path.exists(DUMP_PATH + "/" + table_name):
-        shutil.rmtree(DUMP_PATH + "/" + table_name)
-    mkdir_p(DUMP_PATH + "/" + table_name)
+    if os.path.exists(DUMP_PATH + "/" + ddb_table_name):
+        shutil.rmtree(DUMP_PATH + "/" + ddb_table_name)
+    mkdir_p(DUMP_PATH + "/" + ddb_table_name)
 
     # get table schema
-    logging.info("Dumping table schema for " + table_name)
-    f = open(DUMP_PATH + "/" + table_name + "/" + SCHEMA_FILE, "w+")
-    table_desc = ddb_conn.describe_table(table_name)
+    logging.info("Dumping table schema for " + ddb_table_name)
+    f = open(DUMP_PATH + "/" + ddb_table_name + "/" + SCHEMA_FILE, "w+")
+    table_desc = ddb_conn.describe_table(ddb_table_name)
     f.write(json.dumps(table_desc, indent=JSON_INDENT))
     f.close()
 
@@ -274,19 +274,19 @@ def do_backup(ddb_conn, table_name, read_capacity):
 
     # override table read capacity if specified
     if read_capacity is not None and read_capacity != original_read_capacity:
-        update_provisioned_throughput(ddb_conn, table_name, read_capacity, original_write_capacity)
+        update_provisioned_throughput(ddb_conn, ddb_table_name, read_capacity, original_write_capacity)
 
     # get table data
-    logging.info("Dumping table items for " + table_name)
-    mkdir_p(DUMP_PATH + "/" + table_name + "/" + DATA_DIR)
+    logging.info("Dumping table items for " + ddb_table_name)
+    mkdir_p(DUMP_PATH + "/" + ddb_table_name + "/" + DATA_DIR)
 
     i = 1
     last_evaluated_key = None
 
     while True:
-        scanned_table = ddb_conn.scan(table_name, exclusive_start_key=last_evaluated_key)
+        scanned_table = ddb_conn.scan(ddb_table_name, exclusive_start_key=last_evaluated_key)
 
-        f = open(DUMP_PATH + "/" + table_name + "/" + DATA_DIR + "/" + str(i).zfill(4) + ".json", "w+")
+        f = open(DUMP_PATH + "/" + ddb_table_name + "/" + DATA_DIR + "/" + str(i).zfill(4) + ".json", "w+")
         f.write(json.dumps(scanned_table, indent=JSON_INDENT))
         f.close()
 
@@ -299,13 +299,13 @@ def do_backup(ddb_conn, table_name, read_capacity):
 
     # revert back to original table read capacity if specified
     if read_capacity is not None and read_capacity != original_read_capacity:
-        update_provisioned_throughput(ddb_conn, table_name, original_read_capacity, original_write_capacity, False)
+        update_provisioned_throughput(ddb_conn, ddb_table_name, original_read_capacity, original_write_capacity, False)
 
-    logging.info("Backup for " + table_name + " table completed. Time taken: " + str(
+    logging.info("Backup for " + ddb_table_name + " table completed. Time taken: " + str(
         datetime.datetime.now().replace(microsecond=0) - start_time))
 
 
-def do_restore(ddb_conn, sleep_interval, source_table, destination_table, write_capacity):
+def do_restore(ddb_conn, ddb_sleep_interval, source_table, destination_table, write_capacity):
     logging.info("Starting restore for " + source_table + " to " + destination_table + "..")
 
     # create table using schema
@@ -366,10 +366,10 @@ def do_restore(ddb_conn, sleep_interval, source_table, destination_table, write_
             except boto.exception.JSONResponseError as e:
                 if e.body["__type"] == "com.amazonaws.dynamodb.v20120810#LimitExceededException":
                     logging.info("Limit exceeded, retrying creation of " + destination_table + "..")
-                    time.sleep(sleep_interval)
+                    time.sleep(ddb_sleep_interval)
                 elif e.body["__type"] == "com.amazon.coral.availability#ThrottlingException":
                     logging.info("Control plane limit exceeded, retrying creation of " + destination_table + "..")
-                    time.sleep(sleep_interval)
+                    time.sleep(ddb_sleep_interval)
                 else:
                     logging.exception(e)
                     sys.exit(1)
@@ -396,12 +396,12 @@ def do_restore(ddb_conn, sleep_interval, source_table, destination_table, write_
             # flush every MAX_BATCH_WRITE
             if len(put_requests) == MAX_BATCH_WRITE:
                 logging.debug("Writing next " + str(MAX_BATCH_WRITE) + " items to " + destination_table + "..")
-                batch_write(ddb_conn, sleep_interval, destination_table, put_requests)
+                batch_write(ddb_conn, ddb_sleep_interval, destination_table, put_requests)
                 del put_requests[:]
 
         # flush remainder
         if len(put_requests) > 0:
-            batch_write(ddb_conn, sleep_interval, destination_table, put_requests)
+            batch_write(ddb_conn, ddb_sleep_interval, destination_table, put_requests)
 
     if not args.dataOnly and not args.skipThroughputUpdate:
         # revert to original table write capacity if it has been modified
@@ -431,12 +431,12 @@ def do_restore(ddb_conn, sleep_interval, source_table, destination_table, write_
                         logging.info(
                             "Limit exceeded, retrying updating throughput of GlobalSecondaryIndexes in " + destination_table +
                             "..")
-                        time.sleep(sleep_interval)
+                        time.sleep(ddb_sleep_interval)
                     elif e.body["__type"] == "com.amazon.coral.availability#ThrottlingException":
                         logging.info(
                             "Control plane limit exceeded, retrying updating throughput of GlobalSecondaryIndexes in " +
                             destination_table + "..")
-                        time.sleep(sleep_interval)
+                        time.sleep(ddb_sleep_interval)
 
     logging.info("Restore for " + source_table + " to " + destination_table + " table completed. Time taken: " + str(
         datetime.datetime.now().replace(microsecond=0) - start_time))
