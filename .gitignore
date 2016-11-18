@@ -38,6 +38,8 @@ nosetests.xml
 # Intellij
 .idea
 
+# Folders
 dumps
 node_modules
 logs/*
+future/*
